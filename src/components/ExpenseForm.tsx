@@ -2,7 +2,7 @@ import { categories } from "../data/categories";
 import DatePicker from 'react-date-picker';
 import 'react-date-picker/dist/DatePicker.css';
 import 'react-calendar/dist/Calendar.css';
-import { ChangeEvent, useState } from "react";
+import { ChangeEvent, useEffect, useState } from "react";
 import { DraftExpense, Value } from "../types";
 import { ErrorMessage } from "./ErrorMessage";
 import { useBudget } from "../hooks/useBudget";
@@ -16,8 +16,17 @@ export const ExpenseForm = () => {
     });
 
     const [error, setError] = useState<string>("");
+    const [previousAmount, setPreviousAmount] = useState(0);
 
-    const { dispatch } = useBudget()
+    const { dispatch, state, remainingBudget } = useBudget()
+
+    useEffect(() => {
+        if (state.editingId) {
+            const expense = state.expenses.filter((expense) => expense.id === state.editingId)[0];
+            setExpense(expense)
+            setPreviousAmount(expense.amount);
+        }
+    }, [state.editingId]);
 
     const handleChange = (e: ChangeEvent<HTMLInputElement> | ChangeEvent<HTMLSelectElement>) => {
         const { name, value } = e.target;
@@ -51,20 +60,31 @@ export const ExpenseForm = () => {
             return;
         }
 
-        dispatch({ type: "add-expense", payload: { expense } })
+        if ((expense.amount - previousAmount) > remainingBudget) {
+            setError("El gasto no puede ser mayor al presupuesto");
+            return;
+        }
 
+        if (state.editingId) {
+            dispatch({ type: "update", payload: { expense: { id: state.editingId, ...expense } } })
+        } else {
+            dispatch({ type: "add-expense", payload: { expense } })
+        }
         setExpense({
             amount: 0,
             expenseName: "",
             category: "",
             date: new Date(),
         });
+        setPreviousAmount(0);
     }
 
     return (
         <form className=" space-y-5" onSubmit={(e) => handleSubmit(e)}>
             <legend className=" uppercase text-center text-2xl font-black border-b-4 border-blue-500 py-2">
-                Nuevo Gasto
+                {
+                    state.editingId ? "Actualizar gasto" : "Nuevo gasto"
+                }
             </legend>
 
             {
@@ -114,7 +134,7 @@ export const ExpenseForm = () => {
                 />
             </div>
 
-            <input type="submit" className="bg-blue-600 cursor-pointer w-full p-2 text-white uppercase font-bold rounded-lg" value={"Registrar gasto"} />
+            <input type="submit" className="bg-blue-600 cursor-pointer w-full p-2 text-white uppercase font-bold rounded-lg" value={state.editingId ? "Guardar Cambios" : "Registrar Gasto"} />
         </form >
     );
 };
