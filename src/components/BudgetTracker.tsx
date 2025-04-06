@@ -20,7 +20,7 @@ export const BudgetTracker = () => {
                     amount={30}
                 />
                 <AmountDisplay
-                    label="Hello"
+                    label="Total"
                     amount={40}
                 />
             </div>
